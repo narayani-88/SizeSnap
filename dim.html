@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Dimension Checker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 20px;
+      background: #f8f9fa;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+      padding: 20px;
+      border-radius: 10px;
+      background: white;
+      box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
+    }
+    .upload-section {
+      margin-bottom: 30px;
+      padding: 20px;
+      border-bottom: 1px solid #eee;
+    }
+    input[type="file"] {
+      margin: 15px 0;
+      padding: 10px;
+      border: 2px dashed #ccc;
+      border-radius: 5px;
+      width: 90%;
+      max-width: 400px;
+    }
+    #output {
+      margin: 20px 0;
+      padding: 15px;
+      background: #f8f9ff;
+      border-radius: 5px;
+      font-size: 18px;
+      color: #333;
+    }
+    #history {
+      margin-top: 30px;
+      text-align: left;
+    }
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px;
+      margin: 5px 0;
+      background: #f5f5f5;
+      border-radius: 5px;
+    }
+    .history-item img {
+      width: 50px;
+      height: 50px;
+      object-fit: cover;
+      border-radius: 4px;
+      margin-right: 10px;
+    }
+    .history-info {
+      flex-grow: 1;
+    }
+    .clear-btn {
+      background: #ff6b6b;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 15px;
+    }
+    .clear-btn:hover {
+      background: #ff5252;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="upload-section">
+      <h2>📏 Image Dimension Checker</h2>
+      <input type="file" id="fileInput" accept="image/*">
+      <div id="output">Upload an image to see its dimensions.</div>
+    </div>
+    
+    <div id="history">
+      <h3>📋 History</h3>
+      <div id="historyList"></div>
+      <button class="clear-btn" id="clearHistory">Clear History</button>
+    </div>
+  </div>
+
+  <script>
+    // Load saved history on page load
+    document.addEventListener('DOMContentLoaded', loadHistory);
+    
+    // File input handler
+    document.getElementById('fileInput').addEventListener('change', function(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const dimensions = {
+            name: file.name,
+            width: this.width,
+            height: this.height,
+            src: e.target.result,
+            date: new Date().toLocaleString()
+          };
+          
+          // Display current image info
+          document.getElementById('output').innerHTML = `
+            <div style="display: flex; align-items: center; gap: 15px;">
+              <img src="${e.target.result}" style="max-width: 100px; max-height: 100px; border-radius: 5px;">
+              <div>
+                <div><b>Name:</b> ${file.name}</div>
+                <div><b>Dimensions:</b> ${this.width} × ${this.height}px</div>
+                <div><b>Size:</b> ${(file.size / 1024).toFixed(2)} KB</div>
+              </div>
+            </div>
+          `;
+          
+          // Save to history
+          saveToHistory(dimensions);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Clear history button
+    document.getElementById('clearHistory').addEventListener('click', function() {
+      if (confirm('Are you sure you want to clear all history?')) {
+        localStorage.removeItem('imageDimensionsHistory');
+        document.getElementById('historyList').innerHTML = '<p>No history yet.</p>';
+      }
+    });
+
+    // Save image dimensions to history
+    function saveToHistory(dimensions) {
+      let history = JSON.parse(localStorage.getItem('imageDimensionsHistory') || '[]');
+      
+      // Check if this image is already in history
+      const existingIndex = history.findIndex(item => item.name === dimensions.name && 
+                                                   item.width === dimensions.width && 
+                                                   item.height === dimensions.height);
+      
+      // If not already in history, add it
+      if (existingIndex === -1) {
+        history.unshift(dimensions); // Add to beginning of array
+        // Keep only the last 20 items
+        if (history.length > 20) {
+          history = history.slice(0, 20);
+        }
+        localStorage.setItem('imageDimensionsHistory', JSON.stringify(history));
+      }
+      
+      loadHistory();
+    }
+
+    // Load and display history
+    function loadHistory() {
+      const history = JSON.parse(localStorage.getItem('imageDimensionsHistory') || '[]');
+      const historyList = document.getElementById('historyList');
+      
+      if (history.length === 0) {
+        historyList.innerHTML = '<p>No history yet. Upload an image to see it here.</p>';
+        return;
+      }
+      
+      historyList.innerHTML = history.map(item => `
+        <div class="history-item">
+          <img src="${item.src}" alt="${item.name}">
+          <div class="history-info">
+            <div><strong>${item.name}</strong></div>
+            <div>${item.width} × ${item.height}px • ${new Date(item.date).toLocaleString()}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+  </script>
+</body>
+</html>
